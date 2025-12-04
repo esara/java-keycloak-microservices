@@ -1,0 +1,51 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: keycloak-postgres
+  labels:
+    app.kubernetes.io/component: postgresql
+spec:
+  instances: {{ .Values.postgresql.instances | default 1 }}
+  storage:
+    size: {{ .Values.postgresql.storage.size | default "10Gi" }}
+  enableSuperuserAccess: {{ .Values.postgresql.enableSuperuserAccess | default true }}
+  postgresql:
+    parameters:
+      {{- toYaml .Values.postgresql.postgresql.parameters | nindent 6 }}
+  monitoring:
+    enablePodMonitor: true
+    customQueriesConfigMap:
+      - name: cnpg-postgres-monitoring
+        key: pg-statement-queries
+  {{- if .Values.postgresql.resources }}
+  resources:
+    {{- toYaml .Values.postgresql.resources | nindent 4 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cnpg-postgres-monitoring
+  labels:
+    cnpg.io/reload: ""   # lets CNPG reload queries without restart
+data:
+  pg-statement-queries: |
+    pg_stat_activity_connection:
+      query: |
+        SELECT count(*) AS count
+        FROM pg_stat_activity;
+      metrics:
+        - count:
+            usage: "GAUGE"
+            description: "Connections in this state"
+    pg_stat_activity:
+      query: |
+        SELECT EXTRACT(EPOCH FROM max(now() - xact_start)) AS max_tx_duration_seconds
+        FROM pg_stat_activity
+        WHERE xact_start IS NOT NULL;
+      metrics:
+        - max_tx_duration_seconds:
+            usage: "GAUGE"
+            description: "Maximum running transaction duration in seconds"
+{{- end }}

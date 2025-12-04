@@ -1,0 +1,60 @@
+{{- if .Values.userService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  labels:
+    app.kubernetes.io/component: user-service
+spec:
+  replicas: {{ .Values.userService.replicas }}
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: "{{ include "keycloak-microservices.image" (dict "root" . "repository" .Values.userService.image.repository "tag" .Values.userService.image.tag) }}"
+        imagePullPolicy: {{ .Values.userService.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.userService.service.port }}
+        env:
+        - name: KEYCLOAK_ISSUER_URI
+          value: {{ include "keycloak-microservices.keycloakIssuerUri" . }}
+        {{- if .Values.userService.resources }}
+        resources:
+          {{- toYaml .Values.userService.resources | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.userService.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.userService.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.userService.health.periodSeconds }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.userService.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.userService.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.userService.health.periodSeconds }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  labels:
+    app.kubernetes.io/component: user-service
+    prometheus-scrape: "true"
+spec:
+  selector:
+    app: user-service
+  ports:
+  - name: http
+    port: {{ .Values.userService.service.port }}
+  type: {{ .Values.userService.service.type }}
+{{- end }}
+

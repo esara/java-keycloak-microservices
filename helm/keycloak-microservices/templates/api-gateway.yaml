@@ -1,0 +1,60 @@
+{{- if .Values.apiGateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app.kubernetes.io/component: api-gateway
+spec:
+  replicas: {{ .Values.apiGateway.replicas }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: "{{ include "keycloak-microservices.image" (dict "root" . "repository" .Values.apiGateway.image.repository "tag" .Values.apiGateway.image.tag) }}"
+        imagePullPolicy: {{ .Values.apiGateway.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.apiGateway.service.port }}
+        env:
+        - name: KEYCLOAK_ISSUER_URI
+          value: {{ include "keycloak-microservices.keycloakIssuerUri" . }}
+        {{- if .Values.apiGateway.resources }}
+        resources:
+          {{- toYaml .Values.apiGateway.resources | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.apiGateway.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.apiGateway.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.apiGateway.health.periodSeconds }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.apiGateway.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.apiGateway.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.apiGateway.health.periodSeconds }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  labels:
+    app.kubernetes.io/component: api-gateway
+    prometheus-scrape: "true"
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - name: http
+    port: {{ .Values.apiGateway.service.port }}
+  type: {{ .Values.apiGateway.service.type }}
+{{- end }}
+

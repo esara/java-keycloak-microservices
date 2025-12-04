@@ -1,0 +1,132 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+  labels:
+    app.kubernetes.io/component: keycloak
+type: Opaque
+stringData:
+  KEYCLOAK_ADMIN: {{ .Values.keycloak.admin.username }}
+  KEYCLOAK_ADMIN_PASSWORD: {{ .Values.keycloak.admin.password }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/component: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+        imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+        args:
+        - start
+        - --http-enabled=true
+        - --http-port={{ .Values.keycloak.service.port }}
+        - --hostname-strict=false
+        - --db=postgres
+        ports:
+        - name: http
+          containerPort: {{ .Values.keycloak.service.port }}
+        {{- if .Values.keycloak.health.enabled }}
+        - name: management
+          containerPort: 9000
+        {{- end }}
+        env:
+        - name: KC_DB_URL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.secretName }}
+              key: host
+        - name: KC_DB_URL_PORT
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.secretName }}
+              key: port
+        - name: KC_DB_URL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.secretName }}
+              key: dbname
+        - name: KC_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.secretName }}
+              key: username
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.secretName }}
+              key: password
+        - name: KEYCLOAK_ADMIN
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_ADMIN
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_ADMIN_PASSWORD
+        {{- if .Values.keycloak.health.enabled }}
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        {{- end }}
+        {{- if .Values.keycloak.health.metrics.enabled }}
+        - name: KC_METRICS_ENABLED
+          value: "true"
+        {{- end }}
+        {{- if .Values.keycloak.resources }}
+        resources:
+          {{- toYaml .Values.keycloak.resources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.keycloak.health.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: management
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: management
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/component: keycloak
+    prometheus-scrape: "true"
+spec:
+  selector:
+    app: keycloak
+  ports:
+  - name: http
+    port: {{ .Values.keycloak.service.port }}
+  {{- if .Values.keycloak.health.enabled }}
+  - name: management
+    port: 9000
+  {{- end }}
+  type: {{ .Values.keycloak.service.type }}
+{{- end }}
+

@@ -1,0 +1,126 @@
+# Default values for keycloak-microservices
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  keycloakRealm: microservices
+  keycloakClientId: api-gateway
+  # Image registry for microservices (default: esara from DockerHub)
+  # Override with: --set global.imageRegistry=your-registry
+  imageRegistry: esara
+
+# Keycloak configuration
+keycloak:
+  enabled: true
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  admin:
+    username: admin
+    password: admin
+  
+  service:
+    # Service type: ClusterIP (default) or LoadBalancer
+    type: ClusterIP
+    port: 8080
+  
+  # Resources (optional - leave empty {} to use cluster defaults)
+  resources: {}
+  
+  health:
+    enabled: true
+    metrics:
+      enabled: true
+
+# PostgreSQL configuration (CloudNativePG)
+postgresql:
+  enabled: true
+  instances: 1
+  storage:
+    size: 10Gi
+  enableSuperuserAccess: true
+  postgresql:
+    parameters:
+      pg_stat_statements.track: "all"
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.save: "on"
+      pg_stat_statements.track_utility: "on"
+      track_io_timing: "on"
+  # Resources (optional - leave empty {} to use cluster defaults)
+  resources: {}
+  # CNPG secret name (defaults to keycloak-postgres-app created by CNPG operator)
+  # CNPG creates this secret with: host, port, dbname, username, password
+  secretName: keycloak-postgres-app
+
+# API Gateway configuration
+apiGateway:
+  enabled: true
+  image:
+    repository: api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 2
+  
+  service:
+    # Service type: ClusterIP (default) or LoadBalancer
+    type: ClusterIP
+    port: 8080
+  
+  # Resources (optional - leave empty {} to use cluster defaults)
+  resources: {}
+  
+  health:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# User Service configuration
+userService:
+  enabled: true
+  image:
+    repository: user-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 2
+  
+  service:
+    # Service type: ClusterIP (default) or LoadBalancer
+    type: ClusterIP
+    port: 8080
+  
+  # Resources (optional - leave empty {} to use cluster defaults)
+  resources: {}
+  
+  health:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+# Product Service configuration
+productService:
+  enabled: true
+  image:
+    repository: product-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 2
+  
+  service:
+    # Service type: ClusterIP (default) or LoadBalancer
+    type: ClusterIP
+    port: 8080
+  
+  # Resources (optional - leave empty {} to use cluster defaults)
+  resources: {}
+  
+  health:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+

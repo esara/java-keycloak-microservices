@@ -1,0 +1,60 @@
+{{- if .Values.productService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  labels:
+    app.kubernetes.io/component: product-service
+spec:
+  replicas: {{ .Values.productService.replicas }}
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+      - name: product-service
+        image: "{{ include "keycloak-microservices.image" (dict "root" . "repository" .Values.productService.image.repository "tag" .Values.productService.image.tag) }}"
+        imagePullPolicy: {{ .Values.productService.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.productService.service.port }}
+        env:
+        - name: KEYCLOAK_ISSUER_URI
+          value: {{ include "keycloak-microservices.keycloakIssuerUri" . }}
+        {{- if .Values.productService.resources }}
+        resources:
+          {{- toYaml .Values.productService.resources | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.productService.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.productService.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.productService.health.periodSeconds }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.productService.health.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.productService.health.initialDelaySeconds }}
+          periodSeconds: {{ .Values.productService.health.periodSeconds }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  labels:
+    app.kubernetes.io/component: product-service
+    prometheus-scrape: "true"
+spec:
+  selector:
+    app: product-service
+  ports:
+  - name: http
+    port: {{ .Values.productService.service.port }}
+  type: {{ .Values.productService.service.type }}
+{{- end }}
+

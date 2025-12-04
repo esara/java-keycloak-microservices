@@ -1,0 +1,34 @@
+{{- if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+{{/*apiVersion: monitoring.coreos.com/v1*/}}
+{{/*kind: PodMonitor*/}}
+{{/*metadata:*/}}
+{{/*  name: keycloak-podmonitor*/}}
+{{/*  labels:*/}}
+{{/*    cnpg.io/cluster: keycloak*/}}
+{{/*spec:*/}}
+{{/*  podMetricsEndpoints:*/}}
+{{/*    - port: metrics*/}}
+{{/*  jobLabel: keycloak*/}}
+{{/*  selector:*/}}
+{{/*    matchLabels:*/}}
+{{/*      cnpg.io/cluster: keycloak*/}}
+{{/*      cnpg.io/podRole: instance*/}}
+---
+# ServiceMonitor for all services with prometheus-scrape label
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keycloak-microservices-servicemonitor
+spec:
+  endpoints:
+    # Java services (API Gateway, User Service, Product Service)
+    - port: http
+      path: /actuator/prometheus
+    # Keycloak
+    - port: management
+      path: /metrics
+  jobLabel: keycloak-microservices
+  selector:
+    matchLabels:
+      prometheus-scrape: "true"
+{{- end }}
