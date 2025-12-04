@@ -1,0 +1,81 @@
+1. Access the services:
+{{- if contains "LoadBalancer" .Values.keycloak.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IPs to be available.
+           You can watch the status by running:
+           'kubectl get svc -n {{ .Release.Namespace }} -w'
+  
+  # Get Keycloak LoadBalancer IP
+  export KEYCLOAK_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} keycloak -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Keycloak URL: http://$KEYCLOAK_IP:{{ .Values.keycloak.service.port }}"
+  
+  {{- if .Values.apiGateway.enabled }}
+  # Get API Gateway LoadBalancer IP
+  export API_GATEWAY_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "API Gateway URL: http://$API_GATEWAY_IP:{{ .Values.apiGateway.service.port }}"
+  {{- end }}
+  
+  {{- if .Values.userService.enabled }}
+  # Get User Service LoadBalancer IP
+  export USER_SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} user-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "User Service URL: http://$USER_SERVICE_IP:{{ .Values.userService.service.port }}"
+  {{- end }}
+  
+  {{- if .Values.productService.enabled }}
+  # Get Product Service LoadBalancer IP
+  export PRODUCT_SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} product-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Product Service URL: http://$PRODUCT_SERVICE_IP:{{ .Values.productService.service.port }}"
+  {{- end }}
+{{- else }}
+  # Services are exposed via ClusterIP. Use port-forwarding to access them:
+  echo "Port-forward Keycloak:"
+  echo "  kubectl port-forward --namespace {{ .Release.Namespace }} svc/keycloak {{ .Values.keycloak.service.port }}:{{ .Values.keycloak.service.port }}"
+  {{- if .Values.apiGateway.enabled }}
+  echo "Port-forward API Gateway:"
+  echo "  kubectl port-forward --namespace {{ .Release.Namespace }} svc/api-gateway {{ .Values.apiGateway.service.port }}:{{ .Values.apiGateway.service.port }}"
+  {{- end }}
+  {{- if .Values.userService.enabled }}
+  echo "Port-forward User Service:"
+  echo "  kubectl port-forward --namespace {{ .Release.Namespace }} svc/user-service {{ .Values.userService.service.port }}:{{ .Values.userService.service.port }}"
+  {{- end }}
+  {{- if .Values.productService.enabled }}
+  echo "Port-forward Product Service:"
+  echo "  kubectl port-forward --namespace {{ .Release.Namespace }} svc/product-service {{ .Values.productService.service.port }}:{{ .Values.productService.service.port }}"
+  {{- end }}
+{{- end }}
+
+2. Access Keycloak Admin Console:
+   {{- if contains "LoadBalancer" .Values.keycloak.service.type }}
+   - URL: http://$KEYCLOAK_IP:{{ .Values.keycloak.service.port }}
+   {{- else }}
+   - URL: http://localhost:8080 (after port-forwarding)
+   {{- end }}
+   - Username: {{ .Values.keycloak.admin.username }}
+   - Password: {{ .Values.keycloak.admin.password }}
+
+3. Configure Keycloak:
+   - Create realm: {{ .Values.global.keycloakRealm }}
+   - Create client: {{ .Values.global.keycloakClientId }}
+   - See keycloak-setup.md for detailed instructions
+
+4. Get access token:
+   {{- if contains "LoadBalancer" .Values.keycloak.service.type }}
+   curl -X POST "http://$KEYCLOAK_IP:{{ .Values.keycloak.service.port }}/realms/{{ .Values.global.keycloakRealm }}/protocol/openid-connect/token" \
+   {{- else }}
+   curl -X POST "http://localhost:8080/realms/{{ .Values.global.keycloakRealm }}/protocol/openid-connect/token" \
+   {{- end }}
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=<username>" \
+     -d "password=<password>" \
+     -d "grant_type=password" \
+     -d "client_id={{ .Values.global.keycloakClientId }}"
+
+5. Test the API Gateway:
+   {{- if contains "LoadBalancer" .Values.apiGateway.service.type }}
+   curl -H "Authorization: Bearer <token>" http://$API_GATEWAY_IP:{{ .Values.apiGateway.service.port }}/api/users
+   curl -H "Authorization: Bearer <token>" http://$API_GATEWAY_IP:{{ .Values.apiGateway.service.port }}/api/products
+   {{- else }}
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/api-gateway 8080:8080
+   curl -H "Authorization: Bearer <token>" http://localhost:8080/api/users
+   curl -H "Authorization: Bearer <token>" http://localhost:8080/api/products
+   {{- end }}
+
