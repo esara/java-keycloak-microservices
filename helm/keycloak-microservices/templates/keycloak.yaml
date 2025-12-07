@@ -1,4 +1,34 @@
 {{- if .Values.keycloak.enabled }}
+{{- if .Values.keycloak.tls.enabled }}
+{{- if .Values.keycloak.tls.createIssuer }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.keycloak.tls.issuerRef.name }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-cert
+  labels:
+    app.kubernetes.io/component: keycloak
+spec:
+  secretName: {{ .Values.keycloak.tls.secretName }}
+  issuerRef:
+    name: {{ .Values.keycloak.tls.issuerRef.name }}
+    kind: {{ .Values.keycloak.tls.issuerRef.kind }}
+  commonName: {{ .Values.keycloak.tls.commonName }}.{{ .Release.Namespace }}.svc.cluster.local
+  dnsNames:
+    {{- range .Values.keycloak.tls.dnsNames }}
+    - {{ . }}
+    {{- end }}
+    - {{ .Values.keycloak.tls.commonName }}.{{ .Release.Namespace }}
+    - {{ .Values.keycloak.tls.commonName }}.{{ .Release.Namespace }}.svc.cluster.local
+---
+{{- end }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -32,12 +62,26 @@ spec:
         imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
         args:
         - start
+        {{- if .Values.keycloak.tls.enabled }}
+        - --http-enabled=false
+        - --https-port={{ .Values.keycloak.service.port }}
+        - --https-certificate-file=/etc/keycloak-tls/tls.crt
+        - --https-certificate-key-file=/etc/keycloak-tls/tls.key
+        {{- if .Values.keycloak.health.enabled }}
+        - --http-management-port=9000
+        - --http-management-scheme=http
+        {{- end }}
+        {{- else }}
         - --http-enabled=true
         - --http-port={{ .Values.keycloak.service.port }}
+        {{- if .Values.keycloak.health.enabled }}
+        - --http-management-port=9000
+        {{- end }}
+        {{- end }}
         - --hostname-strict=false
         - --db=postgres
         ports:
-        - name: http
+        - name: {{ if .Values.keycloak.tls.enabled }}https{{ else }}http{{ end }}
           containerPort: {{ .Values.keycloak.service.port }}
         {{- if .Values.keycloak.health.enabled }}
         - name: management
@@ -87,6 +131,12 @@ spec:
         - name: KC_METRICS_ENABLED
           value: "true"
         {{- end }}
+        {{- if .Values.keycloak.tls.enabled }}
+        volumeMounts:
+        - name: keycloak-tls
+          mountPath: /etc/keycloak-tls
+          readOnly: true
+        {{- end }}
         {{- if .Values.keycloak.resources }}
         resources:
           {{- toYaml .Values.keycloak.resources | nindent 10 }}
@@ -109,6 +159,12 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 3
         {{- end }}
+      {{- if .Values.keycloak.tls.enabled }}
+      volumes:
+      - name: keycloak-tls
+        secret:
+          secretName: {{ .Values.keycloak.tls.secretName }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -121,7 +177,7 @@ spec:
   selector:
     app: keycloak
   ports:
-  - name: http
+  - name: {{ if .Values.keycloak.tls.enabled }}https{{ else }}http{{ end }}
     port: {{ .Values.keycloak.service.port }}
   {{- if .Values.keycloak.health.enabled }}
   - name: management

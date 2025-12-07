@@ -142,7 +142,7 @@ kubectl wait --for=condition=available --timeout=300s deployment/keycloak -n clo
 
 ```bash
 # Get token using password grant
-curl -X POST "http://localhost:8080/realms/microservices/protocol/openid-connect/token" \
+curl -k -X POST "https://localhost:8443/realms/microservices/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=testuser" \
   -d "password=testpass" \
@@ -248,7 +248,7 @@ helm upgrade --install --namespace cloakworks --create-namespace keycloak-micros
 export NAMESPACE=cloakworks
 
 # Port-forward services
-kubectl port-forward svc/keycloak 8080:8080 -n $NAMESPACE
+kubectl port-forward svc/keycloak 8443:8443 -n $NAMESPACE
 kubectl port-forward svc/api-gateway 8080:8080 -n $NAMESPACE
 ```
 

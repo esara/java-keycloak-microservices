@@ -24,7 +24,7 @@ keycloak:
   service:
     # Service type: ClusterIP (default) or LoadBalancer
     type: ClusterIP
-    port: 8080
+    port: 8443
   
   # Resources (optional - leave empty {} to use cluster defaults)
   resources: {}
@@ -33,6 +33,24 @@ keycloak:
     enabled: true
     metrics:
       enabled: true
+  
+  # HTTPS/TLS configuration (cert-manager)
+  tls:
+    enabled: true
+    # Create a self-signed Issuer (set to false if you already have one)
+    createIssuer: true
+    # Secret name where cert-manager will store the certificate
+    secretName: keycloak-tls
+    # Certificate issuer reference
+    issuerRef:
+      name: selfsigned-issuer
+      kind: Issuer
+    # Common name for the certificate
+    commonName: keycloak
+    # DNS names for the certificate
+    dnsNames:
+      - keycloak
+      - localhost
 
 # PostgreSQL configuration (CloudNativePG)
 postgresql:

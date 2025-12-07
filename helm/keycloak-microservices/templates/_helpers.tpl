@@ -25,7 +25,7 @@ Create a default fully qualified app name.
 Keycloak issuer URI
 */}}
 {{- define "keycloak-microservices.keycloakIssuerUri" -}}
-http://{{ .Values.keycloak.service.name | default "keycloak" }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.keycloak.service.port }}/realms/{{ .Values.global.keycloakRealm }}
+{{- if .Values.keycloak.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.keycloak.service.name | default "keycloak" }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.keycloak.service.port }}/realms/{{ .Values.global.keycloakRealm }}
 {{- end }}
 
 {{/*

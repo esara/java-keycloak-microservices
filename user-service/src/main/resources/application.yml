@@ -39,6 +39,6 @@ management:
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    com.cloakworks.userservice: DEBUG
+    org.springframework.security: INFO
+    com.cloakworks.userservice: INFO
 
