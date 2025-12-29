@@ -25,6 +25,16 @@ spec:
         env:
         - name: KEYCLOAK_ISSUER_URI
           value: {{ include "keycloak-microservices.keycloakIssuerUri" . }}
+        - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+          value: http://alloy.monitoring:4317
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: grpc
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_METRICS_EXPORTER
+          value: none
+        - name: OTEL_LOGS_EXPORTER
+          value: none
         {{- if .Values.userService.resources }}
         resources:
           {{- toYaml .Values.userService.resources | nindent 10 }}

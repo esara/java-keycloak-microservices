@@ -4,7 +4,7 @@
 DOCKERHUB_USERNAME ?= esara
 
 # Image tag (set via IMAGE_TAG env var or override)
-IMAGE_TAG ?= latest
+IMAGE_TAG ?= javaagent
 
 # Build all services
 build-all:

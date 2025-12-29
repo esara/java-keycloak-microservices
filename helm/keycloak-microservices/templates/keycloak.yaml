@@ -80,6 +80,8 @@ spec:
         {{- end }}
         - --hostname-strict=false
         - --db=postgres
+        - --tracing-enabled=true
+        - --tracing-endpoint=http://alloy.monitoring:4317
         ports:
         - name: {{ if .Values.keycloak.tls.enabled }}https{{ else }}http{{ end }}
           containerPort: {{ .Values.keycloak.service.port }}
