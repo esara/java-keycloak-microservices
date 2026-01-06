@@ -77,7 +77,7 @@ apiGateway:
   enabled: true
   image:
     repository: api-gateway
-    tag: latest
+    tag: obiagent
     pullPolicy: IfNotPresent
   
   replicas: 2
@@ -100,7 +100,7 @@ userService:
   enabled: true
   image:
     repository: user-service
-    tag: latest
+    tag: obiagent
     pullPolicy: IfNotPresent
   
   replicas: 2
@@ -123,7 +123,7 @@ productService:
   enabled: true
   image:
     repository: product-service
-    tag: latest
+    tag: obiagent
     pullPolicy: IfNotPresent
   
   replicas: 2
